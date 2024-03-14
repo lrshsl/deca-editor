@@ -15,9 +15,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed570934406eb16438a4e976b1b4500774099c13b8cb96eec99f620f05090ddf"
 
 [[package]]
-name = "hellx"
+name = "hellx-editor"
 version = "0.1.0"
 dependencies = [
+ "nice_new",
  "termion",
 ]
 
@@ -37,6 +38,10 @@ dependencies = [
  "libc",
  "redox_syscall",
 ]
+
+[[package]]
+name = "nice_new"
+version = "0.1.0"
 
 [[package]]
 name = "numtoa"

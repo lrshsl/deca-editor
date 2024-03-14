@@ -1,0 +1,8 @@
+[package]
+name = "hellx-editor"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+nice_new = { path = "../nice_new" }
+termion = "3.0.0"
