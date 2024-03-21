@@ -1,6 +1,8 @@
 use std::io::{self, Read as _, Write as _};
 use termion::{self, cursor::DetectCursorPos as _, event::Key, input::TermRead as _, terminal_size};
 
+const MSG_BOX_WIDTH: u16 = 30;
+
 pub enum ScrOp {
     WaitForInput,
     WriteMsg,
@@ -13,6 +15,13 @@ pub enum ScrOp {
 macro_rules! msg {
     ($($arg:tt)*) => {
         $crate::stdio_utils::msg(&format!($($arg)*))
+    };
+}
+
+#[macro_export]
+macro_rules! warn {
+    ($($arg:tt)*) => {
+        $crate::stdio_utils::warn(&format!($($arg)*))
     };
 }
 
@@ -38,7 +47,7 @@ macro_rules! msg_centered {
 }
 
 #[inline]
-fn read_key() -> io::Result<Key> {
+pub fn read_key() -> io::Result<Key> {
     loop {
         if let Some(c) = io::stdin().keys().next() {
             return c;
@@ -52,16 +61,38 @@ pub fn flush() -> io::Result<()> {
 }
 
 #[inline]
+pub fn cursor_pos() -> io::Result<(u16, u16)> {
+    io::stdout().cursor_pos()
+}
+
+#[inline]
 pub fn msg(msg: &str) -> io::Result<()> {
-    let (old_x, old_y) = io::stdout().cursor_pos()?;
+    let (old_x, old_y) = cursor_pos()?;
     let screen = terminal_size()?;
     print!(
-        "{}{}{}{}{}",
+        "{}{}{}{}{}{}",
         termion::cursor::Goto(
-            screen.0 - msg.len() as u16,
+            screen.0 - MSG_BOX_WIDTH,
             1),
         termion::style::Faint,
         msg,
+        " ".repeat(MSG_BOX_WIDTH as usize - msg.len() - 1),
+        termion::style::Reset,
+        termion::cursor::Goto(old_x, old_y)
+    );
+    flush()
+}
+
+#[inline]
+pub fn warn(msg: &str) -> io::Result<()> {
+    let (old_x, old_y) = cursor_pos()?;
+    let screen = terminal_size()?;
+    print!(
+        "{}{} Warning: {}{}{}{}",
+        termion::cursor::Goto(1, screen.1 - 1),
+        termion::style::Italic,
+        msg,
+        " ".repeat(screen.0 as usize - msg.len() - " Warning: ".len() - 1),
         termion::style::Reset,
         termion::cursor::Goto(old_x, old_y)
     );
@@ -70,13 +101,14 @@ pub fn msg(msg: &str) -> io::Result<()> {
 
 #[inline]
 pub fn emsg(msg: &str) -> io::Result<()> {
-    let (old_x, old_y) = io::stdout().cursor_pos()?;
+    let (old_x, old_y) = cursor_pos()?;
     let screen = terminal_size()?;
     print!(
-        "{}{}{}{}{}",
+        "{}{} Error: {}{}{}{}",
         termion::cursor::Goto(1, screen.1 - 1),
         termion::style::Bold,
         msg,
+        " ".repeat(screen.0 as usize - msg.len() - " Error: ".len() - 1),
         termion::style::Reset,
         termion::cursor::Goto(old_x, old_y)
     );
@@ -103,7 +135,7 @@ pub fn clear_screen() {
 
 #[inline]
 pub fn msg_centered(msg: &str) -> io::Result<()> {
-    let (old_x, old_y) = io::stdout().cursor_pos()?;
+    let (old_x, old_y) = cursor_pos()?;
     let (x, y) = terminal_size()?;
     print!(
         "{}{}{}{}",

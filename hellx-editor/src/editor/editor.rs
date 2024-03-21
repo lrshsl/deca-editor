@@ -2,9 +2,17 @@ use std::io;
 
 use termion::event::Key;
 
-use super::{buffer::Buffer, settings::Settings, Mode};
+use crate::{cursor_pos, editor::buffer::Bufferable, emsg, flush, read_key, wait_for_input};
 
-pub struct Editor {
+use super::{
+    buffer::Buffer,
+    editor_functions::{EditorCommand as EdCmd, Executable as _},
+    keymaps::InputReaction,
+    settings::Settings,
+    Mode,
+};
+
+pub(crate) struct Editor {
     mode: Mode,
     settings: Settings,
     should_quit: bool,
@@ -12,6 +20,15 @@ pub struct Editor {
 }
 
 impl Editor {
+    /// Better use `nice_new!` for keyword-arguments
+    pub(crate) fn new(mode: Mode, settings: Settings, should_quit: bool, buf: Buffer) -> Self {
+        Self {
+            mode,
+            settings,
+            should_quit,
+            buf,
+        }
+    }
 
     /// Main loop for the editor.
     pub fn run(&mut self) -> io::Result<()> {
@@ -32,18 +49,18 @@ impl Editor {
     }
 
     fn write(&mut self, c: Key) -> io::Result<()> {
-        let (x, y) = io::stdout().cursor_pos()?;
+        let (x, y) = cursor_pos()?;
         match c {
             Key::Char('\n') => {
                 self.buf.insert(y as usize, String::new());
                 print!("\n{}", termion::cursor::Goto(1, y + 1));
             }
             Key::Backspace | Key::Ctrl('h') => {
-                buf_delete(&mut self.buf, x as usize, y as usize);
+                self.buf.delete_char(x as usize - 1, y as usize);
                 print!("{} {}", termion::cursor::Left(1), termion::cursor::Left(1))
             }
             Key::Char(c) => {
-                buf_insert(&mut self.buf, x as usize, y as usize, c);
+                self.buf.insert_char(x as usize, y as usize, c);
                 print!("{c}");
             }
             key => emsg!("<<Error:Write>> Key {key:?} not implemented")?,
