@@ -8,8 +8,11 @@ use crate::editor::{editor::Editor, settings::Settings, Mode};
 
 mod editor;
 mod stdio_utils;
+mod utils;
 
 fn main() -> io::Result<()> {
+    env_logger::init();
+
     let _stdout = stdout().into_raw_mode()?;
 
     let buf: Vec<String> = Vec::from([String::new()]);

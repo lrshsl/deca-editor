@@ -1,7 +1,13 @@
+use log::info;
 use std::io::{self, Read as _, Write as _};
-use termion::{self, cursor::DetectCursorPos as _, event::Key, input::TermRead as _, terminal_size};
+use termion::{
+    self, cursor::DetectCursorPos as _, event::Key, input::TermRead as _, terminal_size,
+};
+
+use crate::utils::Rect;
 
 const MSG_BOX_WIDTH: u16 = 30;
+const MSG_BOX_HEIGHT: u16 = 6;
 
 pub enum ScrOp {
     WaitForInput,
@@ -65,18 +71,72 @@ pub fn cursor_pos() -> io::Result<(u16, u16)> {
     io::stdout().cursor_pos()
 }
 
+/// Wraps the message by putting `Goto`s in the right places. Cuts
+/// off everything that doesn't fit into `rect.x * rect.y`.
+/// Note: Cursor position is set to bottom rigth corner of `rect`.
+fn fit_msg_to_box(msg: &str, rect: Rect) -> String {
+    let (w, h) = (rect.width as usize, rect.height as usize);
+
+    if msg.len() <= w {
+        return msg.to_string() + " ".repeat(w - msg.len()).as_str();
+    }
+    if msg.len() > w * h {
+        log::warn!(
+            "Message too big, overflow is cut off: {} > buffer size ({})",
+            msg.len(),
+            rect.width as usize * rect.height as usize
+        );
+    }
+
+    let mut output = String::new();
+
+    // Go to beginning
+    for i in 0..rect.height {
+        // Go to the correct position
+        output += &termion::cursor::Goto(rect.x, rect.y + i).to_string();
+
+        let start_of_line = i * w as u16;
+
+        // No characters left of `msg` -> just fill with spaces in order to
+        // overwrite possible previous message
+        if start_of_line >= msg.len() as u16 {
+            output += " ".repeat(w).as_str();
+            continue;
+        }
+
+        let start_of_next_line = start_of_line + w as u16;
+
+        // Print remainder of message if message ends in this line
+        if start_of_next_line >= msg.len() as u16 {
+            output += &msg[start_of_line as usize..];
+            output += " ".repeat(w - msg.len() % w).as_str();
+            continue;
+        }
+
+        // Else fill the line with the next `w` characters of the message
+        output += &msg[start_of_line as usize..start_of_next_line as usize - 1];
+    }
+
+    // Overflow was never appended to `output`
+    output
+}
+
 #[inline]
 pub fn msg(msg: &str) -> io::Result<()> {
     let (old_x, old_y) = cursor_pos()?;
     let screen = terminal_size()?;
+    let msg = fit_msg_to_box(
+        msg,
+        Rect::from_points(
+            (screen.0 - MSG_BOX_WIDTH, 1),
+            (screen.0, MSG_BOX_HEIGHT + 1),
+        ),
+    );
     print!(
-        "{}{}{}{}{}{}",
-        termion::cursor::Goto(
-            screen.0 - MSG_BOX_WIDTH,
-            1),
+        "{}{}{}{}{}",
+        termion::cursor::Goto(screen.0 - MSG_BOX_WIDTH, 1),
         termion::style::Faint,
         msg,
-        " ".repeat(MSG_BOX_WIDTH as usize - msg.len() - 1),
         termion::style::Reset,
         termion::cursor::Goto(old_x, old_y)
     );

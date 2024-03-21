@@ -2,7 +2,7 @@ use std::io;
 
 use termion::event::Key;
 
-use crate::{cursor_pos, editor::buffer::Bufferable, emsg, flush, read_key, wait_for_input};
+use crate::{cursor_pos, editor::buffer::CharBuffer as _, emsg, flush, read_key};
 
 use super::{
     buffer::Buffer,
@@ -20,7 +20,6 @@ pub(crate) struct Editor {
 }
 
 impl Editor {
-    /// Better use `nice_new!` for keyword-arguments
     pub(crate) fn new(mode: Mode, settings: Settings, should_quit: bool, buf: Buffer) -> Self {
         Self {
             mode,

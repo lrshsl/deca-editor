@@ -2,12 +2,12 @@ use crate::{msg, warn};
 
 pub(super) type Buffer = Vec<String>;
 
-pub trait Bufferable {
+pub trait CharBuffer {
     fn insert_char(&mut self, x: usize, y: usize, c: char);
     fn delete_char(&mut self, x: usize, y: usize);
 }
 
-impl Bufferable for Buffer {
+impl CharBuffer for Buffer {
     fn insert_char(&mut self, x: usize, y: usize, c: char) {
         if x < self[y - 1].len() {
             self[y - 1].insert(x, c)
