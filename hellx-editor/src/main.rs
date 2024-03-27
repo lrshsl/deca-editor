@@ -26,7 +26,7 @@ fn main() -> io::Result<()> {
     // Start editor
     let mut editor = Editor::new(
         Mode::Write,
-        Settings::colemak(),
+        Settings::colemak_vim(),
         false,
         buf,
     );

@@ -70,8 +70,10 @@ impl Editor {
     fn mv(&mut self, c: Key) -> io::Result<()> {
         match self.settings.keymaps[0].get(&c) {
             Some(InputReaction::Command(cmd)) => match cmd {
-                EdCmd::Write => self.mode = Mode::Write,
                 EdCmd::Exit => self.should_quit = true,
+                EdCmd::OpenFile => todo!(),
+                EdCmd::Write => self.mode = Mode::Write,
+                EdCmd::OpenCommandLine => todo!(),
             },
             Some(InputReaction::Function(fnc)) => self.execute(fnc)?,
             None => emsg!("<<Error:Move>> Key {c:?} not implemented")?,
@@ -81,25 +83,25 @@ impl Editor {
 
     fn execute(&self, fnc: &EditorFunction) -> io::Result<()> {
         match fnc {
-            EditorFunction::GoLnBegin => self.mv_ln_begin()?,
-            EditorFunction::GoLnEnd => self.mv_ln_end()?,
-            EditorFunction::GoLnUp => self.mv_ln_up(),
-            EditorFunction::GoLnDown => self.mv_ln_down(),
-            // EditorFunction::GoWordBack => mv_word_back(),
-            // EditorFunction::GoWordFront => mv_word_front(),
-            // EditorFunction::GoCharBack => mv_char_back(),
-            // EditorFunction::GoCharFront => mv_char_front(),
+            EditorFunction::GoLnBegin => self.go_ln_begin()?,
+            EditorFunction::GoLnEnd => self.go_ln_end()?,
+            EditorFunction::GoLnUp => self.go_ln_up(),
+            EditorFunction::GoLnDown => self.go_ln_down(),
+            EditorFunction::GoWordLeft => self.go_word_left(),
+            EditorFunction::GoWordRight => self.go_word_right(),
+            EditorFunction::GoCharLeft => self.go_char_left(),
+            EditorFunction::GoCharRight => self.go_char_right(),
         }
         Ok(())
     }
 
-    fn mv_ln_begin(&self) -> io::Result<()> {
+    fn go_ln_begin(&self) -> io::Result<()> {
         let (_, y) = cursor_pos()?;
         print!("{}", termion::cursor::Goto(1, y));
         Ok(())
     }
 
-    fn mv_ln_end(&self) -> io::Result<()> {
+    fn go_ln_end(&self) -> io::Result<()> {
         let (_, y) = cursor_pos()?;
         print!(
             "{}",
@@ -114,11 +116,27 @@ impl Editor {
         Ok(())
     }
 
-    fn mv_ln_up(&self) {
+    fn go_ln_up(&self) {
         print!("{}", termion::cursor::Up(1));
     }
 
-    fn mv_ln_down(&self) {
+    fn go_ln_down(&self) {
         print!("{}", termion::cursor::Down(1));
+    }
+
+    fn go_word_left(&self) {
+        todo!()
+    }
+
+    fn go_word_right(&self) {
+        todo!()
+    }
+
+    fn go_char_left(&self) {
+        print!("{}", termion::cursor::Left(1));
+    }
+
+    fn go_char_right(&self) {
+        print!("{}", termion::cursor::Right(1));
     }
 }

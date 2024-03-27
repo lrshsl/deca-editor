@@ -9,6 +9,8 @@ pub(crate) trait Executable {
 pub(crate) enum EditorCommand {
     Exit,
     Write,
+    OpenFile,
+    OpenCommandLine,
 }
 
 pub(crate) enum EditorFunction {
@@ -16,8 +18,8 @@ pub(crate) enum EditorFunction {
     GoLnEnd,
     GoLnUp,
     GoLnDown,
-    // GoWordBack,
-    // GoWordFront,
-    // GoCharBack,
-    // GoCharFront,
+    GoWordLeft,
+    GoWordRight,
+    GoCharLeft,
+    GoCharRight,
 }
