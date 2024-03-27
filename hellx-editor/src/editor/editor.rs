@@ -6,7 +6,7 @@ use crate::{cursor_pos, editor::buffer::CharBuffer as _, emsg, flush, read_key};
 
 use super::{
     buffer::Buffer,
-    editor_functions::{EditorCommand as EdCmd, Executable as _},
+    editor_functions::{EditorCommand as EdCmd, EditorFunction, Executable as _},
     keymaps::InputReaction,
     settings::Settings,
     Mode,
@@ -16,7 +16,7 @@ pub(crate) struct Editor {
     mode: Mode,
     settings: Settings,
     should_quit: bool,
-    buf: Buffer,
+    pub buf: Buffer,
 }
 
 impl Editor {
@@ -73,9 +73,52 @@ impl Editor {
                 EdCmd::Write => self.mode = Mode::Write,
                 EdCmd::Exit => self.should_quit = true,
             },
-            Some(InputReaction::Function(fnc)) => fnc.execute()?,
+            Some(InputReaction::Function(fnc)) => self.execute(fnc)?,
             None => emsg!("<<Error:Move>> Key {c:?} not implemented")?,
         }
         flush()
+    }
+
+    fn execute(&self, fnc: &EditorFunction) -> io::Result<()> {
+        match fnc {
+            EditorFunction::GoLnBegin => self.mv_ln_begin()?,
+            EditorFunction::GoLnEnd => self.mv_ln_end()?,
+            EditorFunction::GoLnUp => self.mv_ln_up(),
+            EditorFunction::GoLnDown => self.mv_ln_down(),
+            // EditorFunction::GoWordBack => mv_word_back(),
+            // EditorFunction::GoWordFront => mv_word_front(),
+            // EditorFunction::GoCharBack => mv_char_back(),
+            // EditorFunction::GoCharFront => mv_char_front(),
+        }
+        Ok(())
+    }
+
+    fn mv_ln_begin(&self) -> io::Result<()> {
+        let (_, y) = cursor_pos()?;
+        print!("{}", termion::cursor::Goto(1, y));
+        Ok(())
+    }
+
+    fn mv_ln_end(&self) -> io::Result<()> {
+        let (_, y) = cursor_pos()?;
+        print!(
+            "{}",
+            termion::cursor::Goto(
+                self.buf
+                    .get(y as usize - 1)
+                    .expect("<EdFn::mv_ln_end>, not on a valid line")
+                    .len() as u16,
+                y
+            )
+        );
+        Ok(())
+    }
+
+    fn mv_ln_up(&self) {
+        print!("{}", termion::cursor::Up(1));
+    }
+
+    fn mv_ln_down(&self) {
+        print!("{}", termion::cursor::Down(1));
     }
 }

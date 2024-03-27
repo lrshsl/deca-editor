@@ -18,7 +18,7 @@ fn main() -> io::Result<()> {
     let buf: Vec<String> = Vec::from([String::new()]);
 
     // Greet user
-    msg_fullscreen("Wellcome to HellX")?;
+    msg_fullscreen("HellX Editor v0.1")?;
     clear_screen();
     set_pos(1, 1);
     flush()?;
