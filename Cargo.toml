@@ -1,5 +1,9 @@
-[workspace]
-resolver = "2"
-members = [
-	"hellx-editor", "nice_new",
-]
+[package]
+name = "deca"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+env_logger = "0.11.3"
+log = "0.4.21"
+termion = "3.0.0"
