@@ -21,8 +21,8 @@ impl Settings {
                 (Key::Char('n'), InputReaction::Function(EdFn::GoLnDown)),
                 (Key::Char('h'), InputReaction::Function(EdFn::GoCharLeft)),
                 (Key::Char('i'), InputReaction::Function(EdFn::GoCharRight)),
-                (Key::Char('w'), InputReaction::Function(EdFn::GoWordLeft)),
-                (Key::Char('b'), InputReaction::Function(EdFn::GoWordRight)),
+                (Key::Char('w'), InputReaction::Function(EdFn::GoWordRight)),
+                (Key::Char('b'), InputReaction::Function(EdFn::GoWordLeft)),
                 (Key::Char(':'), InputReaction::Command(EdCmd::OpenCommandLine)),
             ])],
         }

@@ -17,6 +17,7 @@ pub(crate) struct Editor {
     settings: Settings,
     should_quit: bool,
     pub buf: Buffer,
+    scrolling_x: u16,
 }
 
 impl Editor {
@@ -26,6 +27,7 @@ impl Editor {
             settings,
             should_quit,
             buf,
+            scrolling_x: 0,
         }
     }
 
@@ -127,26 +129,111 @@ impl Editor {
     }
 
     fn go_ln_down(&self) -> io::Result<()> {
-        let (mut x, y) = cursor_pos()?;
+        let (_, y) = cursor_pos()?;
         let is_last_line = y as usize >= self.buf.len(); // y is 1-indexed
         if is_last_line {
             warn!("Already on last line")?;
             return Ok(());
         }
         let next_line_length = self.buf[y as usize].len() as u16;
-        if next_line_length < x {
-            x = next_line_length;
-        }
+        let x = if next_line_length < self.scrolling_x {
+            next_line_length
+        } else {
+            self.scrolling_x
+        };
         print!("{}", termion::cursor::Goto(x, y + 1));
         Ok(())
     }
 
     fn go_word_left(&self) {
-        todo!()
+        let (x, y) = cursor_pos().unwrap();
+        let line = self.buf.get(y as usize - 1).unwrap();
+        let current_char = match line.chars().nth(x as usize - 1) {
+            Some(ch) => ch,
+            None => return,
+        };
+
+        let skip = match current_char {
+            'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => {
+                let last_char = match line.chars().nth(x as usize - 2) {
+                    Some(ch) => ch,
+                    None => return,
+                };
+                if !last_char.is_alphanumeric() {
+                    // If on the first character of the word,
+                    // move on to the next word
+                    let mut in_new_word = false;
+                    line[..x as usize - 1]
+                        .chars()
+                        .rev()
+                        .take_while(|c| {
+                            if in_new_word {
+                                c.is_alphanumeric()
+                            } else {
+                                in_new_word = c.is_alphanumeric();
+                                true
+                            }
+                        })
+                        .count()
+                } else {
+                    line[..x as usize - 1]
+                        .chars()
+                        .rev()
+                        .take_while(|c| c.is_alphanumeric())
+                        .count()
+                }
+            }
+            ' ' => line[..x as usize - 1]
+                .chars()
+                .rev()
+                .take_while(|c| !c.is_alphanumeric() && c != &'_')
+                .count(),
+            _ => line[..x as usize - 1]
+                .chars()
+                .rev()
+                .take_while(|c| !c.is_alphanumeric() && c != &'_' && c != &' ')
+                .count(),
+        };
+        print!("{}", termion::cursor::Left(skip as u16));
     }
 
     fn go_word_right(&self) {
-        todo!()
+        let (x, y) = cursor_pos().unwrap();
+        let line = self.buf.get(y as usize - 1).unwrap();
+        let current_char = match line.chars().nth(x as usize - 1) {
+            Some(ch) => ch,
+            None => return,
+        };
+        let skip = match current_char {
+            // If already in a word, read until the next word
+            'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => {
+                let mut still_in_word = true;
+                line[x as usize - 1..]
+                    .chars()
+                    .take_while(|c| {
+                        if !still_in_word {
+                            // Read until the next word
+                            !c.is_alphanumeric()
+                        } else {
+                            still_in_word = c.is_alphanumeric();
+                            true
+                        }
+                    })
+                    .count()
+            }
+            // If on a space, read until the next word
+            ' ' => line[x as usize - 1..]
+                .chars()
+                .take_while(|c| !c.is_alphanumeric() && c != &'_')
+                .count(),
+            // If on special symbols, read until the next word or space
+            // (TODO: shouldn't stay on the space)
+            _ => line[x as usize - 1..]
+                .chars()
+                .take_while(|c| !c.is_alphanumeric() && c != &'_' && c != &' ')
+                .count(),
+        };
+        print!("{}", termion::cursor::Right(skip as u16));
     }
 
     fn go_char_left(&self) {
