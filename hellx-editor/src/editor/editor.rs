@@ -2,11 +2,11 @@ use std::io;
 
 use termion::event::Key;
 
-use crate::{cursor_pos, editor::buffer::CharBuffer as _, emsg, flush, read_key};
+use crate::{cursor_pos, editor::buffer::CharBuffer as _, emsg, flush, read_key, warn};
 
 use super::{
     buffer::Buffer,
-    editor_functions::{EditorCommand as EdCmd, EditorFunction, Executable as _},
+    editor_functions::{EditorCommand as EdCmd, EditorFunction},
     keymaps::InputReaction,
     settings::Settings,
     Mode,
@@ -85,12 +85,12 @@ impl Editor {
         match fnc {
             EditorFunction::GoLnBegin => self.go_ln_begin()?,
             EditorFunction::GoLnEnd => self.go_ln_end()?,
-            EditorFunction::GoLnUp => self.go_ln_up(),
-            EditorFunction::GoLnDown => self.go_ln_down(),
+            EditorFunction::GoLnUp => self.go_ln_up()?,
+            EditorFunction::GoLnDown => self.go_ln_down()?,
             EditorFunction::GoWordLeft => self.go_word_left(),
             EditorFunction::GoWordRight => self.go_word_right(),
             EditorFunction::GoCharLeft => self.go_char_left(),
-            EditorFunction::GoCharRight => self.go_char_right(),
+            EditorFunction::GoCharRight => self.go_char_right()?,
         }
         Ok(())
     }
@@ -108,7 +108,7 @@ impl Editor {
             termion::cursor::Goto(
                 self.buf
                     .get(y as usize - 1)
-                    .expect("<EdFn::mv_ln_end>, not on a valid line")
+                    .expect("<EdFn::mv_ln_end> Not on a valid line")
                     .len() as u16,
                 y
             )
@@ -116,12 +116,29 @@ impl Editor {
         Ok(())
     }
 
-    fn go_ln_up(&self) {
-        print!("{}", termion::cursor::Up(1));
+    fn go_ln_up(&self) -> io::Result<()> {
+        let (mut x, y) = cursor_pos()?;
+        let last_line_length = self.buf[y as usize - 2].len() as u16;
+        if last_line_length < x {
+            x = last_line_length;
+        }
+        print!("{}", termion::cursor::Goto(x, y - 1));
+        Ok(())
     }
 
-    fn go_ln_down(&self) {
-        print!("{}", termion::cursor::Down(1));
+    fn go_ln_down(&self) -> io::Result<()> {
+        let (mut x, y) = cursor_pos()?;
+        let is_last_line = y as usize >= self.buf.len(); // y is 1-indexed
+        if is_last_line {
+            warn!("Already on last line")?;
+            return Ok(());
+        }
+        let next_line_length = self.buf[y as usize].len() as u16;
+        if next_line_length < x {
+            x = next_line_length;
+        }
+        print!("{}", termion::cursor::Goto(x, y + 1));
+        Ok(())
     }
 
     fn go_word_left(&self) {
@@ -133,10 +150,22 @@ impl Editor {
     }
 
     fn go_char_left(&self) {
-        print!("{}", termion::cursor::Left(1));
+        let (x, _) = cursor_pos().unwrap();
+        if x > 1 {
+            print!("{}", termion::cursor::Left(1));
+        }
     }
 
-    fn go_char_right(&self) {
-        print!("{}", termion::cursor::Right(1));
+    fn go_char_right(&self) -> io::Result<()> {
+        let (x, y) = cursor_pos()?;
+        if x < self
+            .buf
+            .get(y as usize - 1)
+            .expect("<EdFn::mv_char_right> Not on a valid line for index y")
+            .len() as u16
+        {
+            print!("{}", termion::cursor::Right(1));
+        }
+        Ok(())
     }
 }
