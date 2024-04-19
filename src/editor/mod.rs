@@ -1,13 +1,6 @@
 pub(crate) mod editor;
 pub(crate) mod settings;
 pub(crate) mod keymaps;
+pub(crate) mod editor_functions;
 
 mod buffer;
-mod editor_functions;
-
-#[derive(Debug)]
-pub enum Mode {
-    Write,
-    Move,
-    Select,
-}

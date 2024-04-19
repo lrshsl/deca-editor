@@ -4,7 +4,7 @@ use std::io::{self, stdout};
 use stdio_utils::*;
 use termion::raw::IntoRawMode;
 
-use crate::editor::{editor::Editor, settings::Settings, Mode};
+use crate::editor::{editor::Editor, settings::Settings, editor_functions::Mode};
 
 mod editor;
 mod stdio_utils;

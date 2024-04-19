@@ -4,6 +4,7 @@ use termion::event::Key;
 
 use super::editor_functions::{EditorCommand as EdCmd, EditorFunction as EdFn};
 
+#[derive(Debug, Clone)]
 pub(crate) enum InputReaction {
     Command(EdCmd),
     Function(EdFn),

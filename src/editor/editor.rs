@@ -6,10 +6,9 @@ use crate::{cursor_pos, editor::buffer::CharBuffer as _, emsg, flush, read_key, 
 
 use super::{
     buffer::Buffer,
-    editor_functions::{EditorCommand as EdCmd, EditorFunction},
+    editor_functions::{EditorCommand as EdCmd, EditorFunction, Mode},
     keymaps::InputReaction,
     settings::Settings,
-    Mode,
 };
 
 pub(crate) struct Editor {
@@ -39,11 +38,17 @@ impl Editor {
             }
 
             match read_key()? {
-                Key::Esc => self.mode = Mode::Move,
+                Key::Esc => {
+                    print!("{}", termion::cursor::Left(1));
+                    flush()?;
+                    self.mode = Mode::Move;
+                },
                 key => match self.mode {
                     Mode::Write => self.write(key)?,
                     Mode::Move => self.mv(key)?,
                     Mode::Select => {}
+                    Mode::Overwrite => {}
+                    Mode::Replace { .. } => {}
                 },
             }
         }
@@ -70,21 +75,28 @@ impl Editor {
     }
 
     fn mv(&mut self, c: Key) -> io::Result<()> {
-        match self.settings.keymaps[0].get(&c) {
+        let reaction = match self.settings.keymaps[0].get(&c) {
+            Some(reaction) => Some((*reaction).clone()),
+            None => None,
+        };
+        match reaction {
             Some(InputReaction::Command(cmd)) => match cmd {
                 EdCmd::Exit => self.should_quit = true,
                 EdCmd::OpenFile => todo!(),
                 EdCmd::Write => self.mode = Mode::Write,
                 EdCmd::OpenCommandLine => todo!(),
+                EdCmd::EnterMode(m) => self.mode = m,
             },
-            Some(InputReaction::Function(fnc)) => self.execute(fnc)?,
+            Some(InputReaction::Function(fnc)) => self.execute(&fnc)?,
             None => emsg!("<<Error:Move>> Key {c:?} not implemented")?,
         }
         flush()
     }
 
-    fn execute(&self, fnc: &EditorFunction) -> io::Result<()> {
+    fn execute(&mut self, fnc: &EditorFunction) -> io::Result<()> {
         match fnc {
+            EditorFunction::InsertLeft => self.insert_left()?,
+            EditorFunction::InsertRight => self.insert_right()?,
             EditorFunction::GoLnBegin => self.go_ln_begin()?,
             EditorFunction::GoLnEnd => self.go_ln_end()?,
             EditorFunction::GoLnUp => self.go_ln_up()?,
@@ -205,32 +217,30 @@ impl Editor {
             None => return,
         };
         let skip = match current_char {
-            // If already in a word, read until the next word
-            'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => {
+            // If on a space, read until the next word
+            ' ' | '\t' => line[x as usize - 1..]
+                .chars()
+                .take_while(|c| !self.settings.word_chars.contains(*c))
+                .count(),
+            // If on special symbols or in a word, read until the next word
+            ch if self.settings.word_chars.contains(ch) => {
                 let mut still_in_word = true;
                 line[x as usize - 1..]
                     .chars()
                     .take_while(|c| {
-                        if !still_in_word {
-                            // Read until the next word
-                            !c.is_alphanumeric()
-                        } else {
-                            still_in_word = c.is_alphanumeric();
+                        if still_in_word {
+                            still_in_word = self.settings.word_chars.contains(*c);
                             true
+                        } else {
+                            // Read until the next word
+                            c.is_whitespace()
                         }
                     })
                     .count()
             }
-            // If on a space, read until the next word
-            ' ' => line[x as usize - 1..]
-                .chars()
-                .take_while(|c| !c.is_alphanumeric() && c != &'_')
-                .count(),
-            // If on special symbols, read until the next word or space
-            // (TODO: shouldn't stay on the space)
             _ => line[x as usize - 1..]
                 .chars()
-                .take_while(|c| !c.is_alphanumeric() && c != &'_' && c != &' ')
+                .take_while(|c| !self.settings.word_chars.contains(*c) && *c != ' ')
                 .count(),
         };
         print!("{}", termion::cursor::Right(skip as u16));
@@ -253,6 +263,17 @@ impl Editor {
         {
             print!("{}", termion::cursor::Right(1));
         }
+        Ok(())
+    }
+
+    fn insert_left(&mut self) -> io::Result<()> {
+        self.mode = Mode::Write;
+        Ok(())
+    }
+
+    fn insert_right(&mut self) -> io::Result<()> {
+        self.mode = Mode::Write;
+        print!("{}", termion::cursor::Right(1));
         Ok(())
     }
 }
